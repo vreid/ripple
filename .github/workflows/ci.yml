@@ -10,6 +10,7 @@ on:
       - "go.mod"
       - "go.sum"
       - "main.go"
+      - "ripple.go"
       - "Dockerfile"
       - "ripple_bot_prompt.md"
   pull_request:
@@ -19,6 +20,7 @@ on:
       - "go.mod"
       - "go.sum"
       - "main.go"
+      - "ripple.go"
       - "Dockerfile"
       - "ripple_bot_prompt.md"
 

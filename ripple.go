@@ -157,10 +157,17 @@ func run(_ context.Context, cmd *cli.Command) error {
 	mastodonClient := mastodon.NewClient(mastodonConfig)
 	mastodonClient.Transport = httpTransport
 
-	anthropicClient := anthropic.NewClient(
+	anthropicOptions := []option.RequestOption{
 		option.WithHTTPClient(httpClient),
 		option.WithAPIKey(cmd.String("anthropic-api-key")),
-	)
+	}
+
+	cloudflareAiGateway := cmd.String("cloudflare-ai-gateway")
+	if len(cloudflareAiGateway) > 0 {
+		anthropicOptions = append(anthropicOptions, option.WithBaseURL(cloudflareAiGateway))
+	}
+
+	anthropicClient := anthropic.NewClient(anthropicOptions...)
 
 	rippleBot := RippleBot{
 		httpClient,

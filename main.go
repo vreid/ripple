@@ -39,6 +39,11 @@ func main() {
 				Required: true,
 				Sources:  cli.EnvVars("ANTHROPIC_API_KEY"),
 			},
+			&cli.StringFlag{
+				Name:    "cloudflare-ai-gateway",
+				Value:   "",
+				Sources: cli.EnvVars("CLOUDFLARE_AI_GATEWAY"),
+			},
 		},
 	}
 
