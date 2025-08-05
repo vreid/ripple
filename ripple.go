@@ -26,6 +26,8 @@ type RippleBot struct {
 	anthropicClient *anthropic.Client
 }
 
+const botName = "ripple"
+
 //go:embed ripple_bot_prompt.md
 var systemPrompt string
 
@@ -51,7 +53,7 @@ func stripTags(htmlStr string) string {
 }
 
 func shouldRespondToPost(status *mastodon.Status) bool {
-	if strings.ToLower(status.Account.Username) == "ripple" {
+	if strings.ToLower(status.Account.Username) == botName {
 		log.Printf("%s is from myself\n", status.ID)
 		return false
 	}
@@ -71,7 +73,14 @@ func shouldRespondToPost(status *mastodon.Status) bool {
 		return false
 	}
 
-	return true
+	for _, mention := range status.Mentions {
+		if mention.Username == botName {
+			log.Printf("%s mentioned me <3\n", status.ID)
+			return true
+		}
+	}
+
+	return false
 }
 
 func hasRelevantImage(status *mastodon.Status) (bool, string) {
@@ -178,6 +187,41 @@ func (r *RippleBot) postReply() error {
 	return nil
 }
 
+func (r *RippleBot) postQuote() error {
+	prompt := strings.Join([]string{
+		"Please generate a beer related quote of the day as Ripple.",
+	}, " ")
+
+	message, err := r.anthropicClient.Messages.New(context.TODO(), anthropic.MessageNewParams{
+		MaxTokens: 2048,
+		System: []anthropic.TextBlockParam{
+			{
+				Text: systemPrompt,
+			},
+		},
+		Messages: []anthropic.MessageParam{
+			anthropic.NewUserMessage(anthropic.NewTextBlock(prompt)),
+		},
+		Model: anthropic.ModelClaudeSonnet4_20250514,
+	})
+	if err != nil {
+		return err
+	}
+
+	println(prompt)
+	println(message.Content[0].Text)
+
+	_, err = r.mastodonClient.PostStatus(context.TODO(), &mastodon.Toot{
+		Status:     message.Content[0].Text,
+		Visibility: "public",
+	})
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func NewRippleBot(cmd *cli.Command) *RippleBot {
 	httpTransport := &http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
@@ -214,8 +258,14 @@ func NewRippleBot(cmd *cli.Command) *RippleBot {
 	return rippleBot
 }
 
-func run(_ context.Context, cmd *cli.Command) error {
+func RunReply(_ context.Context, cmd *cli.Command) error {
 	rippleBot := NewRippleBot(cmd)
 
 	return rippleBot.postReply()
+}
+
+func RunQuote(_ context.Context, cmd *cli.Command) error {
+	rippleBot := NewRippleBot(cmd)
+
+	return rippleBot.postQuote()
 }

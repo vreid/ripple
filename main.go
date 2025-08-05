@@ -12,7 +12,7 @@ import (
 func main() {
 	cmd := &cli.Command{
 		Name:   "ripple",
-		Action: run,
+		Action: RunQuote,
 		Flags: []cli.Flag{
 			&cli.StringFlag{
 				Name:     "mastodon-server",
