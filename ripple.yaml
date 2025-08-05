@@ -1,0 +1,46 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: ripple
+spec:
+  schedule: "0 16 * * *"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: Never
+          containers:
+            - name: ripple
+              image: vreid/ripple:latest
+              imagePullPolicy: Always
+              env:
+                - name: MASTODON_SERVER
+                  valueFrom:
+                    secretKeyRef:
+                      name: ripple-secrets
+                      key: mastodon_server
+                - name: MASTODON_CLIENT_ID
+                  valueFrom:
+                    secretKeyRef:
+                      name: ripple-secrets
+                      key: mastodon_client_id
+                - name: MASTODON_CLIENT_SECRET
+                  valueFrom:
+                    secretKeyRef:
+                      name: ripple-secrets
+                      key: mastodon_client_secret
+                - name: MASTODON_ACCESS_TOKEN
+                  valueFrom:
+                    secretKeyRef:
+                      name: ripple-secrets
+                      key: mastodon_access_token
+                - name: ANTHROPIC_API_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      name: ripple-secrets
+                      key: anthropic_api_key
+                - name: CLOUDFLARE_AI_GATEWAY
+                  valueFrom:
+                    secretKeyRef:
+                      name: ripple-secrets
+                      key: cloudflare_ai_gateway

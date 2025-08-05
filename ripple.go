@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"crypto/tls"
 	_ "embed"
@@ -10,11 +11,13 @@ import (
 	"log"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/anthropics/anthropic-sdk-go"
 	"github.com/anthropics/anthropic-sdk-go/option"
 	"github.com/mattn/go-mastodon"
 	"github.com/urfave/cli/v3"
+	"golang.org/x/net/html"
 )
 
 type RippleBot struct {
@@ -25,6 +28,27 @@ type RippleBot struct {
 
 //go:embed ripple_bot_prompt.md
 var systemPrompt string
+
+func renderNode(n *html.Node, buf *bytes.Buffer) {
+	if n.Type == html.TextNode {
+		buf.WriteString(n.Data)
+	}
+
+	for c := n.FirstChild; c != nil; c = c.NextSibling {
+		renderNode(c, buf)
+	}
+}
+
+func stripTags(htmlStr string) string {
+	doc, err := html.Parse(bytes.NewReader([]byte(htmlStr)))
+	if err != nil {
+		return ""
+	}
+
+	var buf bytes.Buffer
+	renderNode(doc, &buf)
+	return buf.String()
+}
 
 func shouldRespondToPost(status *mastodon.Status) bool {
 	if strings.ToLower(status.Account.Username) == "ripple" {
@@ -103,22 +127,34 @@ func (r *RippleBot) postReply() error {
 			return fmt.Errorf("couldn't get content type for image")
 		}
 
+		prompt := strings.Join([]string{
+			"Please generate a comment for the following image as Ripple.",
+			"If the image contains people don't assume the poster is one of them.",
+			fmt.Sprintf("The image was posted '%s' by '%s'.",
+				status.CreatedAt.Format(time.RFC850),
+				status.Account.DisplayName),
+			fmt.Sprintf("The post contained the following text: '%s'", stripTags(status.Content)),
+		}, " ")
+
 		message, err := r.anthropicClient.Messages.New(context.TODO(), anthropic.MessageNewParams{
-			MaxTokens: 1024,
+			MaxTokens: 2048,
 			System: []anthropic.TextBlockParam{
 				{
 					Text: systemPrompt,
 				},
 			},
 			Messages: []anthropic.MessageParam{
+				anthropic.NewUserMessage(anthropic.NewTextBlock(prompt)),
 				anthropic.NewUserMessage(anthropic.NewImageBlockBase64(contentType, encodedImage)),
-				anthropic.NewUserMessage(anthropic.NewTextBlock("Please generate a comment for this image as Ripple.")),
 			},
 			Model: anthropic.ModelClaudeSonnet4_20250514,
 		})
 		if err != nil {
 			return err
 		}
+
+		println(prompt)
+		println(message.Content[0].Text)
 
 		_, err = r.mastodonClient.PostStatus(context.TODO(), &mastodon.Toot{
 			InReplyToID: status.ID,
@@ -142,7 +178,7 @@ func (r *RippleBot) postReply() error {
 	return nil
 }
 
-func run(_ context.Context, cmd *cli.Command) error {
+func NewRippleBot(cmd *cli.Command) *RippleBot {
 	httpTransport := &http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 	}
@@ -169,11 +205,17 @@ func run(_ context.Context, cmd *cli.Command) error {
 
 	anthropicClient := anthropic.NewClient(anthropicOptions...)
 
-	rippleBot := RippleBot{
+	rippleBot := &RippleBot{
 		httpClient,
 		mastodonClient,
 		&anthropicClient,
 	}
+
+	return rippleBot
+}
+
+func run(_ context.Context, cmd *cli.Command) error {
+	rippleBot := NewRippleBot(cmd)
 
 	return rippleBot.postReply()
 }
