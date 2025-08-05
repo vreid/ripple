@@ -11,8 +11,7 @@ import (
 
 func main() {
 	cmd := &cli.Command{
-		Name:   "ripple",
-		Action: RunQuote,
+		Name: "ripple",
 		Flags: []cli.Flag{
 			&cli.StringFlag{
 				Name:     "mastodon-server",
@@ -45,6 +44,21 @@ func main() {
 				Sources: cli.EnvVars("CLOUDFLARE_AI_GATEWAY"),
 			},
 		},
+		Commands: []*cli.Command{
+			{
+				Name:   "check-notifications",
+				Action: RunCheckNotifications,
+			},
+			{
+				Name:   "quote",
+				Action: RunQuote,
+			},
+			{
+				Name:   "reply",
+				Action: RunReply,
+			},
+		},
+		DefaultCommand: "check-notifications",
 	}
 
 	if err := cmd.Run(context.Background(), os.Args); err != nil {

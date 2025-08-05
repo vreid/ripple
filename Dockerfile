@@ -21,4 +21,4 @@ WORKDIR /app
 
 COPY --from=build /build/ripple .
 
-ENTRYPOINT ["/app/ripple"]
+ENTRYPOINT ["/app/ripple", "check-notifications"]
