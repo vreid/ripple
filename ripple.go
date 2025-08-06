@@ -137,7 +137,7 @@ func (r *RippleBot) toMessageParam(status *mastodon.Status) (*anthropic.MessageP
 
 	imageInfo := "no images"
 	if len(images) > 0 {
-		imageInfo = "the following images"
+		imageInfo = "images"
 	}
 
 	intro := fmt.Sprintf("This status was created '%s' by '%s', has the id '%s', had the following content and %s.",
@@ -307,7 +307,7 @@ func (r *RippleBot) checkNotifications() error {
 			continue
 		}
 
-		messageParams := []anthropic.MessageParam{}
+		messages := []anthropic.MessageParam{}
 
 		for _, ancestor := range statusContext.Ancestors {
 			messageParam, err := r.toMessageParam(ancestor)
@@ -316,7 +316,7 @@ func (r *RippleBot) checkNotifications() error {
 				continue
 			}
 
-			messageParams = append(messageParams, *messageParam)
+			messages = append(messages, *messageParam)
 		}
 
 		messageParam, err := r.toMessageParam(status)
@@ -324,7 +324,7 @@ func (r *RippleBot) checkNotifications() error {
 			log.Printf("couldn't convert %s to message param: %s\n", status.ID, err.Error())
 			continue
 		} else {
-			messageParams = append(messageParams, *messageParam)
+			messages = append(messages, *messageParam)
 		}
 
 		for _, descendant := range statusContext.Descendants {
@@ -336,17 +336,11 @@ func (r *RippleBot) checkNotifications() error {
 				continue
 			}
 
-			messageParams = append(messageParams, *messageParam)
+			messages = append(messages, *messageParam)
 		}
 
-		additionalSystemPrompt := strings.Join([]string{
-			"Please generate a comment for the following Mastodon thread as Ripple.",
-			"If the images contain people don't assume the users are in those pictures.",
-			"It is possible that the thread already contains comments from you.",
-			"Try to put a fitting hashtag at the end of the message.",
-			"Feel free to respond in the language the thread is in.",
-			fmt.Sprintf("You are replying to the post with the id '%s'.", status.ID),
-		}, " ")
+		additionalSystemPrompt := fmt.Sprintf("You are replying to the status with the id '%s'.", status.ID)
+
 		message, err := r.anthropicClient.Messages.New(context.TODO(), anthropic.MessageNewParams{
 			MaxTokens: 2048,
 			System: []anthropic.TextBlockParam{
@@ -357,7 +351,7 @@ func (r *RippleBot) checkNotifications() error {
 					Text: additionalSystemPrompt,
 				},
 			},
-			Messages: messageParams,
+			Messages: messages,
 			Model:    anthropic.ModelClaudeSonnet4_20250514,
 		})
 		if err != nil {

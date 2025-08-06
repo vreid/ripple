@@ -49,14 +49,14 @@ func main() {
 				Name:   "check-notifications",
 				Action: RunCheckNotifications,
 			},
-			{
+			/*{
 				Name:   "quote",
 				Action: RunQuote,
 			},
 			{
 				Name:   "reply",
 				Action: RunReply,
-			},
+			},*/
 		},
 		DefaultCommand: "check-notifications",
 	}

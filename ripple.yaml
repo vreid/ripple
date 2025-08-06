@@ -3,7 +3,7 @@ kind: CronJob
 metadata:
   name: ripple
 spec:
-  schedule: "0 16 * * *"
+  schedule: "*/5 * * * *"
   jobTemplate:
     spec:
       template:
